@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Universal Smart TV Remote</title>
+<style>
+body { font-family: Arial; text-align: center; background:#111; color:white; }
+button { padding:15px; margin:5px; font-size:16px; cursor:pointer; }
+.pad button { width:60px; }
+input { padding:10px; width:70%; margin-top:10px; }
+h2, h3 { margin-top:20px; }
+#status { margin-bottom: 10px; color: #0f0; }
+</style>
+</head>
+<body>
+
+<h2>📺 Universal Smart TV Remote</h2>
+<div id="status">Searching for TV...</div>
+
+<!-- POWER -->
+<button onclick="key(26)">⏻ Power</button>
+
+<!-- VOLUME -->
+<div>
+  <button onclick="key(24)">🔊 +</button>
+  <button onclick="key(25)">🔉 -</button>
+  <button onclick="key(164)">🔇 Mute</button>
+</div>
+
+<!-- NAVIGATION -->
+<div class="pad">
+  <br>
+  <button onclick="key(19)">⬆</button><br>
+  <button onclick="key(21)">⬅</button>
+  <button onclick="key(66)">OK</button>
+  <button onclick="key(22)">➡</button><br>
+  <button onclick="key(20)">⬇</button>
+</div>
+
+<!-- SYSTEM -->
+<div>
+  <button onclick="key(3)">🏠 Home</button>
+  <button onclick="key(4)">↩ Back</button>
+  <button onclick="key(82)">☰ Menu</button>
+</div>
+
+<!-- MEDIA -->
+<div>
+  <button onclick="key(85)">⏯ Play/Pause</button>
+</div>
+
+<!-- APPS -->
+<h3>Apps</h3>
+<button onclick="app('com.google.android.youtube.tv')">YouTube</button>
+<button onclick="app('com.netflix.ninja')">Netflix</button>
+
+<!-- KEYBOARD -->
+<h3>Keyboard</h3>
+<input id="text" placeholder="Type here">
+<button onclick="sendText()">Send</button>
+
+<script>
+let API = "https://api-server-2-dkuk.onrender.com";
+let TVFound = false;
+
+// Auto-check if TV discovered
+async function checkTV() {
+  try {
+    const res = await fetch(API + "/discover");
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById("status").innerText = "TV Found: " + data.ip;
+      TVFound = true;
+    } else {
+      document.getElementById("status").innerText = "Searching for TV...";
+      TVFound = false;
+    }
+  } catch {
+    document.getElementById("status").innerText = "Searching for TV...";
+    TVFound = false;
+  }
+}
+
+// Run every 5 sec
+setInterval(checkTV, 5000);
+checkTV();
+
+function key(code){
+  if (!TVFound) return alert("TV not discovered yet");
+  fetch(API + "/key",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({code})
+  });
+}
+
+function sendText(){
+  if (!TVFound) return alert("TV not discovered yet");
+  fetch(API + "/text",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({text:document.getElementById("text").value})
+  });
+}
+
+function app(pkg){
+  if (!TVFound) return alert("TV not discovered yet");
+  fetch(API + "/app",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({pkg})
+  });
+}
+</script>
+
+</body>
+</html>
