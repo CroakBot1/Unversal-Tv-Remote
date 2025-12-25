@@ -14,7 +14,11 @@ h2, h3 { margin-top:20px; }
 <body>
 
 <h2>📺 Universal Smart TV Remote</h2>
-<div id="status">Searching for TV...</div>
+<div id="status">TV IP not set</div>
+
+<!-- Manual TV IP input -->
+<input id="tvIp" placeholder="Enter TV IP (e.g., 192.168.x.xxx)">
+<button onclick="setTVIP()">Set TV IP</button>
 
 <!-- POWER -->
 <button onclick="key(26)">⏻ Power</button>
@@ -59,33 +63,26 @@ h2, h3 { margin-top:20px; }
 <button onclick="sendText()">Send</button>
 
 <script>
-let API = "https://api-server-2-dkuk.onrender.com";
-let TVFound = false;
+const API = "https://api-server-2-dkuk.onrender.com";
+let TVSet = false;
 
-// Auto-check if TV discovered
-async function checkTV() {
-  try {
-    const res = await fetch(API + "/discover");
-    if (res.ok) {
-      const data = await res.json();
-      document.getElementById("status").innerText = "TV Found: " + data.ip;
-      TVFound = true;
-    } else {
-      document.getElementById("status").innerText = "Searching for TV...";
-      TVFound = false;
+function setTVIP(){
+  const ip = document.getElementById("tvIp").value.trim();
+  if(!ip) return alert("Enter a valid IP");
+  fetch(API + "/set-tv-ip", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ip})
+  }).then(res => {
+    if(res.ok){
+      TVSet = true;
+      document.getElementById("status").innerText = "TV IP set: " + ip;
     }
-  } catch {
-    document.getElementById("status").innerText = "Searching for TV...";
-    TVFound = false;
-  }
+  });
 }
 
-// Run every 5 sec
-setInterval(checkTV, 5000);
-checkTV();
-
 function key(code){
-  if (!TVFound) return alert("TV not discovered yet");
+  if(!TVSet) return alert("Set TV IP first");
   fetch(API + "/key",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -94,7 +91,7 @@ function key(code){
 }
 
 function sendText(){
-  if (!TVFound) return alert("TV not discovered yet");
+  if(!TVSet) return alert("Set TV IP first");
   fetch(API + "/text",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -103,7 +100,7 @@ function sendText(){
 }
 
 function app(pkg){
-  if (!TVFound) return alert("TV not discovered yet");
+  if(!TVSet) return alert("Set TV IP first");
   fetch(API + "/app",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
