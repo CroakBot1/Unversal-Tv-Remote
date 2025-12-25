@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Universal Smart TV Remote</title>
+<title>Smart TV Remote (Auto-Connect)</title>
 <style>
 body { font-family: Arial; text-align: center; background:#111; color:white; }
 button { padding:15px; margin:5px; font-size:16px; cursor:pointer; }
@@ -13,100 +13,112 @@ h2, h3 { margin-top:20px; }
 </head>
 <body>
 
-<h2>📺 Universal Smart TV Remote</h2>
-<div id="status">TV IP not set</div>
+<h2>📺 Smart TV Remote</h2>
+<div id="status">Scanning for TVs...</div>
+<div id="tv-list"></div>
 
-<!-- Manual TV IP input -->
-<input id="tvIp" placeholder="Enter TV IP (e.g., 192.168.x.xxx)">
-<button onclick="setTVIP()">Set TV IP</button>
+<!-- Controls -->
+<div id="controls" style="display:none;">
+  <!-- POWER -->
+  <button onclick="key(26)">⏻ Power</button>
 
-<!-- POWER -->
-<button onclick="key(26)">⏻ Power</button>
+  <!-- VOLUME -->
+  <div>
+    <button onclick="key(24)">🔊 +</button>
+    <button onclick="key(25)">🔉 -</button>
+    <button onclick="key(164)">🔇 Mute</button>
+  </div>
 
-<!-- VOLUME -->
-<div>
-  <button onclick="key(24)">🔊 +</button>
-  <button onclick="key(25)">🔉 -</button>
-  <button onclick="key(164)">🔇 Mute</button>
+  <!-- NAVIGATION -->
+  <div class="pad">
+    <br>
+    <button onclick="key(19)">⬆</button><br>
+    <button onclick="key(21)">⬅</button>
+    <button onclick="key(66)">OK</button>
+    <button onclick="key(22)">➡</button><br>
+    <button onclick="key(20)">⬇</button>
+  </div>
+
+  <!-- SYSTEM -->
+  <div>
+    <button onclick="key(3)">🏠 Home</button>
+    <button onclick="key(4)">↩ Back</button>
+    <button onclick="key(82)">☰ Menu</button>
+  </div>
+
+  <!-- MEDIA -->
+  <div>
+    <button onclick="key(85)">⏯ Play/Pause</button>
+  </div>
+
+  <!-- APPS -->
+  <h3>Apps</h3>
+  <button onclick="app('com.google.android.youtube.tv')">YouTube</button>
+  <button onclick="app('com.netflix.ninja')">Netflix</button>
+
+  <!-- KEYBOARD -->
+  <h3>Keyboard</h3>
+  <input id="text" placeholder="Type here">
+  <button onclick="sendText()">Send</button>
 </div>
-
-<!-- NAVIGATION -->
-<div class="pad">
-  <br>
-  <button onclick="key(19)">⬆</button><br>
-  <button onclick="key(21)">⬅</button>
-  <button onclick="key(66)">OK</button>
-  <button onclick="key(22)">➡</button><br>
-  <button onclick="key(20)">⬇</button>
-</div>
-
-<!-- SYSTEM -->
-<div>
-  <button onclick="key(3)">🏠 Home</button>
-  <button onclick="key(4)">↩ Back</button>
-  <button onclick="key(82)">☰ Menu</button>
-</div>
-
-<!-- MEDIA -->
-<div>
-  <button onclick="key(85)">⏯ Play/Pause</button>
-</div>
-
-<!-- APPS -->
-<h3>Apps</h3>
-<button onclick="app('com.google.android.youtube.tv')">YouTube</button>
-<button onclick="app('com.netflix.ninja')">Netflix</button>
-
-<!-- KEYBOARD -->
-<h3>Keyboard</h3>
-<input id="text" placeholder="Type here">
-<button onclick="sendText()">Send</button>
 
 <script>
-const API = "https://api-server-2-dkuk.onrender.com";
-let TVSet = false;
+const API = "http://localhost:3000";
+let TVConnected = false;
 
-function setTVIP(){
-  const ip = document.getElementById("tvIp").value.trim();
-  if(!ip) return alert("Enter a valid IP");
-  fetch(API + "/set-tv-ip", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ip})
-  }).then(res => {
-    if(res.ok){
-      TVSet = true;
-      document.getElementById("status").innerText = "TV IP set: " + ip;
-    }
+// Scan LAN for TVs
+async function scanTVs() {
+  document.getElementById("status").innerText = "Scanning for TVs...";
+  const res = await fetch(API + "/scan");
+  const devices = await res.json();
+  const tvListDiv = document.getElementById("tv-list");
+  tvListDiv.innerHTML = "";
+  if(devices.length===0){
+    document.getElementById("status").innerText = "No TVs found";
+    return;
+  }
+  devices.forEach(d=>{
+    const btn = document.createElement("button");
+    btn.innerText = d.ip;
+    btn.onclick = ()=>connectTV(d.ip);
+    tvListDiv.appendChild(btn);
   });
+  document.getElementById("status").innerText = "Select a TV to connect";
 }
 
-function key(code){
-  if(!TVSet) return alert("Set TV IP first");
-  fetch(API + "/key",{
+// Connect to TV
+async function connectTV(ip){
+  const res = await fetch(API + "/connect",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({code})
+    body:JSON.stringify({ip})
   });
+  if(res.ok){
+    TVConnected = true;
+    document.getElementById("status").innerText = "Connected to " + ip;
+    document.getElementById("controls").style.display = "block";
+    document.getElementById("tv-list").style.display = "none";
+  }
+}
+
+// Control functions
+function key(code){
+  if(!TVConnected) return alert("Connect to a TV first");
+  fetch(API + "/key",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({code})});
 }
 
 function sendText(){
-  if(!TVSet) return alert("Set TV IP first");
-  fetch(API + "/text",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({text:document.getElementById("text").value})
-  });
+  if(!TVConnected) return alert("Connect to a TV first");
+  fetch(API + "/text",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:document.getElementById("text").value})});
 }
 
 function app(pkg){
-  if(!TVSet) return alert("Set TV IP first");
-  fetch(API + "/app",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({pkg})
-  });
+  if(!TVConnected) return alert("Connect to a TV first");
+  fetch(API + "/app",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pkg})});
 }
+
+// Start scanning on load
+scanTVs();
 </script>
 
 </body>
