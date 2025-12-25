@@ -1,124 +1,139 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Smart TV Remote (Auto-Connect)</title>
+<title>Universal Smart TV Remote</title>
 <style>
 body { font-family: Arial; text-align: center; background:#111; color:white; }
-button { padding:15px; margin:5px; font-size:16px; cursor:pointer; }
-.pad button { width:60px; }
-input { padding:10px; width:70%; margin-top:10px; }
-h2, h3 { margin-top:20px; }
+button { padding:12px; margin:3px; font-size:14px; cursor:pointer; }
+.pad button { width:50px; }
+input { padding:10px; width:60%; margin-top:10px; }
+h2,h3 { margin-top:20px; }
 #status { margin-bottom: 10px; color: #0f0; }
+.container { display:flex; justify-content:center; flex-wrap:wrap; }
 </style>
 </head>
 <body>
 
-<h2>📺 Smart TV Remote</h2>
-<div id="status">Scanning for TVs...</div>
-<div id="tv-list"></div>
+<h2>📺 Universal Smart TV Remote</h2>
+<div id="status">TV IP not set</div>
 
-<!-- Controls -->
-<div id="controls" style="display:none;">
-  <!-- POWER -->
+<!-- TV IP input -->
+<input id="tvIp" placeholder="Enter TV IP (e.g., 192.168.x.xxx)">
+<button onclick="setTVIP()">Set TV IP</button>
+
+<div id="controls" style="display:none; margin-top:20px;">
+
+<!-- POWER / SOURCE -->
+<div class="container">
   <button onclick="key(26)">⏻ Power</button>
+  <button onclick="key(223)">🔌 Input</button>
+  <button onclick="key(176)">☀️ Brightness Up</button>
+  <button onclick="key(178)">☀️ Brightness Down</button>
+</div>
 
-  <!-- VOLUME -->
-  <div>
-    <button onclick="key(24)">🔊 +</button>
-    <button onclick="key(25)">🔉 -</button>
-    <button onclick="key(164)">🔇 Mute</button>
-  </div>
+<!-- VOLUME -->
+<div class="container">
+  <button onclick="key(24)">🔊 Vol+</button>
+  <button onclick="key(25)">🔉 Vol-</button>
+  <button onclick="key(164)">🔇 Mute</button>
+</div>
 
-  <!-- NAVIGATION -->
-  <div class="pad">
-    <br>
-    <button onclick="key(19)">⬆</button><br>
-    <button onclick="key(21)">⬅</button>
-    <button onclick="key(66)">OK</button>
-    <button onclick="key(22)">➡</button><br>
-    <button onclick="key(20)">⬇</button>
-  </div>
+<!-- NAVIGATION PAD -->
+<div class="pad">
+  <br>
+  <button onclick="key(19)">⬆</button><br>
+  <button onclick="key(21)">⬅</button>
+  <button onclick="key(66)">OK</button>
+  <button onclick="key(22)">➡</button><br>
+  <button onclick="key(20)">⬇</button>
+</div>
 
-  <!-- SYSTEM -->
-  <div>
-    <button onclick="key(3)">🏠 Home</button>
-    <button onclick="key(4)">↩ Back</button>
-    <button onclick="key(82)">☰ Menu</button>
-  </div>
+<!-- SYSTEM BUTTONS -->
+<div class="container">
+  <button onclick="key(3)">🏠 Home</button>
+  <button onclick="key(4)">↩ Back</button>
+  <button onclick="key(82)">☰ Menu</button>
+  <button onclick="key(187)">⏩ Forward</button>
+  <button onclick="key(88)">⏪ Rewind</button>
+</div>
 
-  <!-- MEDIA -->
-  <div>
-    <button onclick="key(85)">⏯ Play/Pause</button>
-  </div>
+<!-- MEDIA CONTROLS -->
+<div class="container">
+  <button onclick="key(85)">⏯ Play/Pause</button>
+  <button onclick="key(86)">⏹ Stop</button>
+  <button onclick="key(87)">⏭ Next</button>
+  <button onclick="key(88)">⏮ Previous</button>
+</div>
 
-  <!-- APPS -->
-  <h3>Apps</h3>
+<!-- CHANNEL -->
+<div class="container">
+  <button onclick="key(166)">🔼 CH+</button>
+  <button onclick="key(167)">🔽 CH-</button>
+</div>
+
+<!-- APPS -->
+<h3>Apps</h3>
+<div class="container">
   <button onclick="app('com.google.android.youtube.tv')">YouTube</button>
   <button onclick="app('com.netflix.ninja')">Netflix</button>
+  <button onclick="app('com.amazon.avod.thirdpartyclient')">Prime Video</button>
+  <button onclick="app('com.hbo.hbonow')">HBO Max</button>
+</div>
 
-  <!-- KEYBOARD -->
-  <h3>Keyboard</h3>
-  <input id="text" placeholder="Type here">
-  <button onclick="sendText()">Send</button>
+<!-- KEYBOARD -->
+<h3>Keyboard</h3>
+<input id="text" placeholder="Type here">
+<button onclick="sendText()">Send</button>
+
 </div>
 
 <script>
-const API = "http://localhost:3000";
-let TVConnected = false;
+const API = "https://api-server-2-dkuk.onrender.com";
+let TVSet = false;
 
-// Scan LAN for TVs
-async function scanTVs() {
-  document.getElementById("status").innerText = "Scanning for TVs...";
-  const res = await fetch(API + "/scan");
-  const devices = await res.json();
-  const tvListDiv = document.getElementById("tv-list");
-  tvListDiv.innerHTML = "";
-  if(devices.length===0){
-    document.getElementById("status").innerText = "No TVs found";
-    return;
-  }
-  devices.forEach(d=>{
-    const btn = document.createElement("button");
-    btn.innerText = d.ip;
-    btn.onclick = ()=>connectTV(d.ip);
-    tvListDiv.appendChild(btn);
-  });
-  document.getElementById("status").innerText = "Select a TV to connect";
-}
-
-// Connect to TV
-async function connectTV(ip){
-  const res = await fetch(API + "/connect",{
+function setTVIP(){
+  const ip = document.getElementById("tvIp").value.trim();
+  if(!ip) return alert("Enter TV IP");
+  fetch(API + "/set-tv-ip", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({ip})
+  }).then(res=>{
+    if(res.ok){
+      TVSet = true;
+      document.getElementById("status").innerText = "TV IP set: " + ip;
+      document.getElementById("controls").style.display = "block";
+    } else alert("Failed to set TV IP");
   });
-  if(res.ok){
-    TVConnected = true;
-    document.getElementById("status").innerText = "Connected to " + ip;
-    document.getElementById("controls").style.display = "block";
-    document.getElementById("tv-list").style.display = "none";
-  }
 }
 
-// Control functions
 function key(code){
-  if(!TVConnected) return alert("Connect to a TV first");
-  fetch(API + "/key",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({code})});
+  if(!TVSet) return alert("Set TV IP first");
+  fetch(API + "/key", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({code})
+  });
 }
 
 function sendText(){
-  if(!TVConnected) return alert("Connect to a TV first");
-  fetch(API + "/text",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:document.getElementById("text").value})});
+  if(!TVSet) return alert("Set TV IP first");
+  const text = document.getElementById("text").value;
+  fetch(API + "/text", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({text})
+  });
 }
 
 function app(pkg){
-  if(!TVConnected) return alert("Connect to a TV first");
-  fetch(API + "/app",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pkg})});
+  if(!TVSet) return alert("Set TV IP first");
+  fetch(API + "/app", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({pkg})
+  });
 }
-
-// Start scanning on load
-scanTVs();
 </script>
 
 </body>
